@@ -12,7 +12,7 @@
   ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License
-  -->
+-->
 
 <resources>
 
@@ -27,8 +27,10 @@
     <!-- Color of the text describing an unconsumed voicemail. -->
     <color name="call_log_voicemail_highlight_color">#33b5e5</color>
 
-    <!-- Colour of voicemail progress bar to the right of position indicator.
-         Same as the background color of the dialer -->
+    <!--
+         Colour of voicemail progress bar to the right of position indicator.
+         Same as the background color of the dialer
+    -->
     <color name="voicemail_playback_seek_bar_yet_to_play">#cecece</color>
 
     <!-- Colour of voicemail progress bar to the left of position indicator. -->
@@ -38,7 +40,7 @@
     <color name="item_selected">#660099cc</color>
 
     <!-- Background color of new dialer activity -->
-    <color name="background_dialer_light">#cecece</color>
+    <color name="background_dialer_light">#eeeeee</color>
 
     <!-- Background color of dialer list items (contacts, call log entries) -->
     <color name="background_dialer_list_items">#eeeeee</color>
@@ -93,4 +95,23 @@
     <color name="call_log_voicemail_status_text_color">#888888</color>
     <color name="call_log_voicemail_status_action_text_color">#33b5e5</color>
     <color name="dialtacts_frame_color">#33999999</color>
+
+    <!-- Text color for the "Remove" text in its regular state -->
+    <color name="remove_text_color">#555555</color>
+
+    <!-- Text color for the "Remove" text when a contact is dragged on top of the remove view -->
+    <color name="remove_highlighted_text_color">#FF3F3B</color>
+
+    <!-- Text color for the "speed dial" label in the favorites menu. -->
+    <color name="speed_dial_text_color">#555555</color>
+
+    <!-- Background color for the "All Contacts" button in the favorites menu. -->
+    <color name="all_contacts_button_color">#999999</color>
+
+    <!-- Background color for the favorites menu when pressed. -->
+    <color name="favorites_menu_pressed_color">#d6d6d6</color>
+
+    <!-- Text color for the "All Contacts" button above the favorite callers -->
+    <color name="all_contacts_button_text_color">#ffffff</color>
+
 </resources>
