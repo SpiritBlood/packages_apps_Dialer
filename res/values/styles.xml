@@ -22,6 +22,14 @@
         <item name="android:actionBarStyle">@style/DialtactsActionBarStyle</item>
         <!-- Style for the tabs (for the tabs) -->
         <item name="android:actionBarTabStyle">@style/DialtactsActionBarTabStyle</item>
+        <!-- Style for the tab bar (for the divider between tabs) -->
+        <item name="android:actionBarTabBarStyle">@style/DialtactsActionBarTabBarStyle</item>
+        <!-- Style for the tab bar text (for text on tabs) -->
+        <item name="android:actionBarTabTextStyle">@style/DialtactsActionBarTabTextStyle</item>
+        <!-- Style for the overflow button in the actionbar. -->
+        <item name="android:actionOverflowButtonStyle">@style/DialtactsActionBarOverflow</item>
+        <!-- The "Up" icon in the action bar. -->
+        <item name="android:homeAsUpIndicator">@drawable/ic_back_arrow</item>
         <item name="android:listViewStyle">@style/ListViewStyle</item>
         <!-- Style for the tab bar (for the divider between tabs) -->
         <item name="android:actionBarTabBarStyle">@style/DialtactsActionBarTabBarStyle</item>
@@ -79,6 +87,23 @@
         <item name="favorites_padding_bottom">?android:attr/actionBarSize</item>
     </style>
 
+    <!-- An extension of the main DialtactsTheme used when the the launcher activity is shown.
+         Ensures that there is no actionbar showing during the load of the dialer app. -->
+    <style name="DialtactsThemeHiddenActionBar" parent="DialtactsTheme">
+        <item name="android:actionBarStyle">@style/DialtactsHiddenActionBarStyle</item>
+    </style>
+
+    <!-- A "hidden" action bar style.  Used when loading the launcher activity so that the
+         default actionbar is effectively hidden. -->
+    <style name="DialtactsHiddenActionBarStyle" parent="DialtactsActionBarStyle">
+        <item name="android:background">@color/background_dialer_light</item>
+        <item name="android:titleTextStyle">@style/DialtactsHiddenActionBarTextStyle</item>
+    </style>
+
+    <style name="DialtactsHiddenActionBarTextStyle" parent="@android:style/TextAppearance">
+        <item name="android:textColor">@color/background_dialer_light</item>
+    </style>
+
     <!-- Action bar overflow menu icon. -->
     <style name="DialtactsActionBarOverflow"
            parent="@android:style/Widget.Holo.ActionButton.Overflow">
@@ -86,7 +111,7 @@
     </style>
 
     <style name="DialpadTheme" parent="DialtactsTheme">
-        <item name="android:textColorPrimary">@color/dialpad_text_color</item>
+        <item name="android:textColorPrimary">@color/dialpad_primary_text_color</item>
     </style>
 
     <style name="DialtactsThemeWithActionBarOverlay" parent="DialtactsTheme">
@@ -97,6 +122,9 @@
         <item name="android:windowBackground">@color/background_dialer_list_items</item>
         <item name="android:gravity">top</item>
         <item name="android:listViewStyle">@style/ListViewStyle</item>
+        <item name="android:actionBarStyle">@style/DialtactsActionBarStyle</item>
+        <item name="android:actionOverflowButtonStyle">@style/DialtactsActionBarOverflow</item>
+        <item name="android:homeAsUpIndicator">@drawable/ic_back_arrow</item>
     </style>
 
     <style name="CallDetailActivityTheme" parent="@style/CallDetailActivityTheme1">

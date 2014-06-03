@@ -151,6 +151,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
     private View mDialpadButton;
     private View mDialButton;
     private PopupMenu mOverflowMenu;
+    private PopupMenu mDialpadOverflowMenu;
 
     // Padding view used to shift the fragments up when the dialpad is shown.
     private View mFragmentsFrame;
@@ -170,6 +171,9 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
     private boolean mFirstLaunch;
     private View mSearchViewContainer;
     private RemoveView mRemoveViewContainer;
+    // This view points to the Framelayout that houses both the search view and remove view
+    // containers.
+    private View mSearchAndRemoveViewContainer;
     private View mSearchViewCloseButton;
     private View mVoiceSearchButton;
     private EditText mSearchView;
@@ -315,6 +319,8 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         mFragmentsFrame = findViewById(R.id.dialtacts_frame);
 
         mRemoveViewContainer = (RemoveView) findViewById(R.id.remove_view_container);
+        mSearchAndRemoveViewContainer = (View) findViewById(R.id.search_and_remove_view_container);
+        setupFakeActionBarItems();
         prepareSearchView();
 
         if (UI.FILTER_CONTACTS_ACTION.equals(intent.getAction())
@@ -323,7 +329,6 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         }
 
         hideDialpadFragment(false, false);
-        setupFakeActionBarItems();
 
         mDialerDatabaseHelper = DatabaseHelperManager.getDatabaseHelper(this);
         SmartDialPrefix.initializeNanpSettings(this);
@@ -372,10 +377,16 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
             mSmartDialSearchFragment = (SmartDialSearchFragment) fragment;
             mSmartDialSearchFragment.setOnPhoneNumberPickerActionListener(
                     mPhoneNumberPickerActionListener);
+            if (mFragmentsFrame != null) {
+                mFragmentsFrame.setAlpha(1.0f);
+            }
         } else if (fragment instanceof SearchFragment) {
             mRegularSearchFragment = (RegularSearchFragment) fragment;
             mRegularSearchFragment.setOnPhoneNumberPickerActionListener(
                     mPhoneNumberPickerActionListener);
+            if (mFragmentsFrame != null) {
+                mFragmentsFrame.setAlpha(1.0f);
+            }
         } else if (fragment instanceof PhoneFavoriteFragment) {
             mPhoneFavoriteFragment = (PhoneFavoriteFragment) fragment;
             mPhoneFavoriteFragment.setListener(mPhoneFavoriteListener);
@@ -430,7 +441,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         switch (view.getId()) {
             case R.id.overflow_menu: {
                 if (isDialpadShowing()) {
-                    mDialpadFragment.optionsMenuInvoked(view);
+                    mDialpadOverflowMenu.show();
                 } else {
                     mOverflowMenu.show();
                 }
@@ -524,6 +535,12 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         ft.commit();
         mDialButton.setVisibility(shouldShowOnscreenDialButton() ? View.VISIBLE : View.GONE);
         mDialpadButton.setVisibility(View.GONE);
+
+        if (mDialpadOverflowMenu == null) {
+            mDialpadOverflowMenu = mDialpadFragment.buildOptionsMenu(mMenuButton);
+        }
+
+        mMenuButton.setOnTouchListener(mDialpadOverflowMenu.getDragToOpenListener());
     }
 
     public void hideDialpadFragment(boolean animate, boolean clearDialpad) {
@@ -541,6 +558,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         ft.commit();
         mDialButton.setVisibility(View.GONE);
         mDialpadButton.setVisibility(View.VISIBLE);
+        mMenuButton.setOnTouchListener(mOverflowMenu.getDragToOpenListener());
     }
 
     private void prepareSearchView() {
@@ -569,7 +587,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
     final AnimatorListener mHideListener = new AnimatorListenerAdapter() {
         @Override
         public void onAnimationEnd(Animator animation) {
-            mSearchViewContainer.setVisibility(View.GONE);
+            mSearchAndRemoveViewContainer.setVisibility(View.GONE);
         }
     };
 
@@ -588,44 +606,45 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
     }
 
     public void hideSearchBar() {
-       hideSearchBar(true);
-    }
+        final int height = mSearchAndRemoveViewContainer.getHeight();
+        mSearchAndRemoveViewContainer.animate().cancel();
+        mSearchAndRemoveViewContainer.setAlpha(1);
+        mSearchAndRemoveViewContainer.setTranslationY(0);
+        mSearchAndRemoveViewContainer.animate().withLayer().alpha(0)
+                .translationY(-height).setDuration(ANIMATION_DURATION)
+                .setListener(mHideListener);
 
-    public void hideSearchBar(boolean shiftView) {
-        if (shiftView) {
-            mSearchViewContainer.animate().cancel();
-            mSearchViewContainer.setAlpha(1);
-            mSearchViewContainer.setTranslationY(0);
-            mSearchViewContainer.animate().withLayer().alpha(0).translationY(-mSearchView.getHeight())
-                    .setDuration(200).setListener(mHideListener);
+        mFragmentsFrame.animate().withLayer()
+                .translationY(-height).setDuration(ANIMATION_DURATION).setListener(
+                new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        mFragmentsFrame.setTranslationY(0);
+                    }
+                });
 
-            mFragmentsFrame.animate().withLayer()
-                    .translationY(-mSearchViewContainer.getHeight()).setDuration(200).setListener(
-                    new AnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationEnd(Animator animation) {
-                            mFragmentsFrame.setTranslationY(0);
-                        }
-                    });
-        } else {
-            mSearchViewContainer.setTranslationY(-mSearchView.getHeight());
+        if (!mInDialpadSearch && !mInRegularSearch) {
+            // If the favorites fragment is showing, fade to blank.
+            mFragmentsFrame.animate().alpha(0.0f);
         }
     }
 
     public void showSearchBar() {
-        mSearchViewContainer.animate().cancel();
-        mSearchViewContainer.setAlpha(0);
-        mSearchViewContainer.setTranslationY(-mSearchViewContainer.getHeight());
-        mSearchViewContainer.animate().withLayer().alpha(1).translationY(0).setDuration(200)
-                .setListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationStart(Animator animation) {
-                        mSearchViewContainer.setVisibility(View.VISIBLE);
-                    }
-                });
+        final int height = mSearchAndRemoveViewContainer.getHeight();
+        mSearchAndRemoveViewContainer.animate().cancel();
+        mSearchAndRemoveViewContainer.setAlpha(0);
+        mSearchAndRemoveViewContainer.setTranslationY(-height);
+        mSearchAndRemoveViewContainer.animate().withLayer().alpha(1).translationY(0)
+                .setDuration(ANIMATION_DURATION).setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationStart(Animator animation) {
+                            mSearchAndRemoveViewContainer.setVisibility(View.VISIBLE);
+                        }
+                    });
 
-        mFragmentsFrame.setTranslationY(-mSearchViewContainer.getHeight());
-        mFragmentsFrame.animate().withLayer().translationY(0).setDuration(200)
+        mFragmentsFrame.setTranslationY(-height);
+        mFragmentsFrame.animate().withLayer().translationY(0).setDuration(ANIMATION_DURATION)
+                .alpha(1.0f)
                 .setListener(
                         new AnimatorListenerAdapter() {
                             @Override
@@ -634,23 +653,19 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
                         });
     }
 
-
-    public void setupFakeActionBarItems() {
+    private void setupFakeActionBarItems() {
         mMenuButton = findViewById(R.id.overflow_menu);
         if (mMenuButton != null) {
             mMenuButton.setOnClickListener(this);
-
-            mOverflowMenu = new OverflowPopupMenu(DialtactsActivity.this, mMenuButton);
-            final Menu menu = mOverflowMenu.getMenu();
-            mOverflowMenu.inflate(R.menu.dialtacts_options);
-            mOverflowMenu.setOnMenuItemClickListener(this);
+            if (mOverflowMenu == null) {
+                mOverflowMenu = buildOptionsMenu(mMenuButton);
+            }
             mMenuButton.setOnTouchListener(mOverflowMenu.getDragToOpenListener());
         }
 
         mFakeActionBar = findViewById(R.id.fake_action_bar);
 
         mCallHistoryButton = findViewById(R.id.call_history_button);
-        // mCallHistoryButton.setMinimumWidth(fakeMenuItemWidth);
         mCallHistoryButton.setOnClickListener(this);
 
         mDialButton = findViewById(R.id.dial_button);
@@ -658,8 +673,14 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         mDialButton.setOnLongClickListener(this);
 
         mDialpadButton = findViewById(R.id.dialpad_button);
-        // DialpadButton.setMinimumWidth(fakeMenuItemWidth);
         mDialpadButton.setOnClickListener(this);
+    }
+
+    private PopupMenu buildOptionsMenu(View invoker) {
+        PopupMenu menu = new OverflowPopupMenu(this, invoker);
+        menu.inflate(R.menu.dialtacts_options);
+        menu.setOnMenuItemClickListener(this);
+        return menu;
     }
 
     private void fixIntent(Intent intent) {
@@ -860,7 +881,6 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         }
 
         final FragmentTransaction transaction = getFragmentManager().beginTransaction();
-        transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
 
         SearchFragment fragment;
         if (mInDialpadSearch) {
@@ -906,6 +926,10 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         // transitioned between search fragments
         getFragmentManager().popBackStack(0, FragmentManager.POP_BACK_STACK_INCLUSIVE);
         setNotInSearchUi();
+
+        if (isDialpadShowing()) {
+            mFragmentsFrame.setAlpha(0);
+        }
     }
 
     /** Returns an Intent to launch Call Settings screen */
@@ -957,7 +981,9 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
 
     @Override
     public void setDialButtonEnabled(boolean enabled) {
-        mDialButton.setEnabled(enabled);
+        if (mDialButton != null) {
+            mDialButton.setEnabled(enabled);
+        }
     }
 
     @Override

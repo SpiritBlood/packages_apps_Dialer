@@ -39,6 +39,7 @@
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:id="@+id/search_and_remove_view_container"
                 >
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -63,6 +64,7 @@
                         android:textSize="@dimen/search_text_size"
                         android:fontFamily="@string/search_font_family"
                         android:textColor="@color/searchbox_text_color"
+                        android:textColorHint="@color/searchbox_hint_text_color"
                         android:inputType="textFilter"/>
                     <ImageView
                         android:id="@+id/search_close_button"
@@ -139,6 +141,12 @@
                     android:layout_alignParentRight="true"
                     />
             </RelativeLayout>
+            <Space
+                android:id="@+id/contact_tile_frame_spacer"
+                android:layout_height="wrap_content"
+                android:layout_width="match_parent"
+                android:layout_alignParentBottom="true"
+                android:visibility="gone"/>
         </LinearLayout>
     </FrameLayout>
 
