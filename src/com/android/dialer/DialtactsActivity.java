@@ -633,11 +633,11 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         mSearchAndRemoveViewContainer.setAlpha(1);
         mSearchAndRemoveViewContainer.setTranslationY(0);
         mSearchAndRemoveViewContainer.animate().withLayer().alpha(0)
-                .translationY(-height).setDuration(ANIMATION_DURATION)
+                .translationY(-height).setDuration(FADE_ANIMATION_DURATION)
                 .setListener(mHideListener);
 
         mFragmentsFrame.animate().withLayer()
-                .translationY(-height).setDuration(ANIMATION_DURATION).setListener(
+                .translationY(-height).setDuration(FADE_ANIMATION_DURATION).setListener(
                 new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animation) {
@@ -661,7 +661,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         mSearchAndRemoveViewContainer.setAlpha(0);
         mSearchAndRemoveViewContainer.setTranslationY(-height);
         mSearchAndRemoveViewContainer.animate().withLayer().alpha(1).translationY(0)
-                .setDuration(ANIMATION_DURATION).setListener(new AnimatorListenerAdapter() {
+                .setDuration(FADE_ANIMATION_DURATION).setListener(new AnimatorListenerAdapter() {
                         @Override
                         public void onAnimationStart(Animator animation) {
                             mSearchAndRemoveViewContainer.setVisibility(View.VISIBLE);
@@ -669,7 +669,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
                     });
 
         mFragmentsFrame.setTranslationY(-height);
-        mFragmentsFrame.animate().withLayer().translationY(0).setDuration(ANIMATION_DURATION)
+        mFragmentsFrame.animate().withLayer().translationY(0).setDuration(FADE_ANIMATION_DURATION)
                 .alpha(1.0f)
                 .setListener(
                         new AnimatorListenerAdapter() {
