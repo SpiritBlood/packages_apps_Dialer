@@ -17,4 +17,8 @@
 <resources>
     <bool name="call_recording_enabled">false</bool>
     <integer name="call_recording_audio_source">1</integer>
+<<<<<<< HEAD
+=======
+    <bool name="call_durationtype_enabled">false</bool>
+>>>>>>> 2e20ff144ad714578fbc12ccb9f34c2b656416bb
 </resources>

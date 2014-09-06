@@ -50,6 +50,10 @@
     <!-- allow broadcasting secret code intents that reboot the phone -->
     <uses-permission android:name="android.permission.REBOOT" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- allow brodcasting across all users -->
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
+    <!-- send analytic events through internal package -->
+    <uses-permission android:name="com.cyngn.cmstats.SEND_ANALYTICS" />
     <!-- This tells the activity manager to not delay any of our activity
      start requests, even if they happen immediately after the user
      presses home. -->
@@ -79,7 +83,7 @@
             android:launchMode="singleTask"
             android:clearTaskOnLaunch="true"
             android:icon="@mipmap/ic_launcher_phone"
-            android:screenOrientation="portrait"
+            android:screenOrientation="nosensor"
             android:enabled="@*android:bool/config_voice_capable"
             android:windowSoftInputMode="stateAlwaysHidden|adjustNothing">
             <intent-filter>
@@ -111,6 +115,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="tel" />
+                <data android:scheme="sip" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.CALL_BUTTON" />
@@ -145,7 +150,7 @@
         <activity android:name="com.android.dialer.calllog.CallLogActivity"
             android:label="@string/call_log_activity_title"
             android:theme="@style/DialtactsThemeWithActionBarOverlay"
-            android:screenOrientation="portrait"
+            android:screenOrientation="nosensor"
             android:icon="@mipmap/ic_launcher_phone">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -158,13 +163,13 @@
         <activity android:name="com.android.dialer.list.AllContactsActivity"
             android:label="@string/show_all_contacts_title"
             android:theme="@style/DialtactsThemeWithActionBarOverlay"
-            android:screenOrientation="portrait">
+            android:screenOrientation="nosensor">
         </activity>
 
         <activity android:name="com.android.dialer.CallDetailActivity"
                   android:label="@string/callDetailTitle"
                   android:theme="@style/CallDetailActivityTheme"
-                  android:screenOrientation="portrait"
+                  android:screenOrientation="nosensor"
                   android:icon="@mipmap/ic_launcher_phone"
                   android:parentActivityName="com.android.dialer.calllog.CallLogActivity"
             >
@@ -178,7 +183,7 @@
         <activity android:name=".callstats.CallStatsDetailActivity"
             android:label="@string/callStatsDetailTitle"
             android:theme="@style/CallDetailActivityTheme"
-            android:screenOrientation="portrait"
+            android:screenOrientation="nosensor"
             android:icon="@mipmap/ic_launcher_phone" >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -285,6 +290,14 @@
                  <action android:name="android.intent.action.BOOT_COMPLETED"/>
             </intent-filter>
         </receiver>
+
+        <activity android:name=".SpeedDialListActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode"
+            android:label="@string/set_speed_dial" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+            </intent-filter>
+        </activity>
 
         <receiver android:name=".interactions.UndemoteOutgoingCallReceiver">
             <intent-filter>

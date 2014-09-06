@@ -18,6 +18,10 @@ package com.android.dialer.lookup.dastelefonbuch;
 
 import android.content.Context;
 import android.net.Uri;
+<<<<<<< HEAD
+=======
+import android.text.Html;
+>>>>>>> 2e20ff144ad714578fbc12ccb9f34c2b656416bb
 
 import com.android.dialer.lookup.LookupSettings;
 
@@ -53,6 +57,22 @@ public class TelefonbuchApi {
                 .appendQueryParameter("kw", number)
                 .build();
         String output = httpGet(uri.toString());
+<<<<<<< HEAD
+=======
+        if (output == null) {
+            return null;
+        }
+
+        // Cut out everything we're not interested in (scripts etc.) to
+        // speed up the subsequent matching.
+        Pattern regex = Pattern.compile(": Treffer(.*)Ende Treffer", Pattern.DOTALL);
+        Matcher matcher = regex.matcher(output);
+        if (!matcher.find()) {
+            return null;
+        }
+
+        output = matcher.group(1);
+>>>>>>> 2e20ff144ad714578fbc12ccb9f34c2b656416bb
 
         String name = parseName(output);
         if (name == null) {
@@ -106,24 +126,36 @@ public class TelefonbuchApi {
         Matcher m = regex.matcher(output);
 
         if (m.find()) {
+<<<<<<< HEAD
             return m.group(1).trim().replaceAll("&amp;", "&");
+=======
+            return fromHtml(m.group(1));
+>>>>>>> 2e20ff144ad714578fbc12ccb9f34c2b656416bb
         }
 
         return null;
     }
 
     private static String parseNumber(String output) {
+<<<<<<< HEAD
         Pattern regex = Pattern.compile("<span\\s+class=\"ico fon.*?>.*<span>(.*?)</span>",
                 Pattern.DOTALL);
         Matcher m = regex.matcher(output);
         if (m.find()) {
             return m.group(1).trim();
+=======
+        Pattern regex = Pattern.compile("<span\\s+class=\"ico fon.*>.*<span>(.*?)</span><br/>", 0);
+        Matcher m = regex.matcher(output);
+        if (m.find()) {
+            return fromHtml(m.group(1).replaceAll("</?span.*?>", ""));
+>>>>>>> 2e20ff144ad714578fbc12ccb9f34c2b656416bb
         }
 
         return null;
     }
 
     private static String parseAddress(String output) {
+<<<<<<< HEAD
         String regexBase = "<span\\s+itemprop=\"%s\"\\s?>(.*?)</span>";
 
         Pattern regexAddress = Pattern.compile(
@@ -153,11 +185,30 @@ public class TelefonbuchApi {
         sb.append(locationMatcher.group(1).trim());
 
         return sb.toString();
+=======
+        Pattern regex = Pattern.compile("<address.*?>\n?(.*?)</address>", Pattern.DOTALL);
+        Matcher m = regex.matcher(output);
+        if (m.find()) {
+            return fromHtml(m.group(1).replaceAll("</?span.*?>", ""));
+        }
+
+        return null;
+    }
+
+    private static String fromHtml(String input) {
+        if (input == null) {
+            return null;
+        }
+        return Html.fromHtml(input).toString().trim();
+>>>>>>> 2e20ff144ad714578fbc12ccb9f34c2b656416bb
     }
 
     public static class ContactInfo {
         String name;
+<<<<<<< HEAD
         String city;
+=======
+>>>>>>> 2e20ff144ad714578fbc12ccb9f34c2b656416bb
         String address;
         String formattedNumber;
         String website;

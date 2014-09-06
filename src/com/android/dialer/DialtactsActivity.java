@@ -32,6 +32,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.TypedArray;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
@@ -41,6 +43,7 @@ import android.provider.CallLog.Calls;
 import android.provider.ContactsContract.Contacts;
 import android.provider.ContactsContract.Intents;
 import android.provider.ContactsContract.Intents.UI;
+import android.provider.Settings;
 import android.speech.RecognizerIntent;
 import android.telephony.MSimTelephonyManager;
 import android.telephony.TelephonyManager;
@@ -68,6 +71,7 @@ import com.android.contacts.common.dialog.ClearFrequentsDialog;
 import com.android.contacts.common.interactions.ImportExportDialogFragment;
 import com.android.contacts.common.list.OnPhoneNumberPickerActionListener;
 import com.android.dialer.calllog.CallLogActivity;
+import com.android.dialer.cmstats.DialerStats;
 import com.android.dialer.database.DialerDatabaseHelper;
 import com.android.dialer.dialpad.DialpadFragment;
 import com.android.dialer.dialpad.SmartDialNameMatcher;
@@ -90,6 +94,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+//add for CSVT
+import android.content.ServiceConnection;
+import org.codeaurora.ims.csvt.ICsvtService;
+import android.content.ComponentName;
+import android.os.IBinder;
+import android.os.SystemProperties;
+
+
 /**
  * The dialer tab's title is 'phone', a more common name (see strings.xml).
  */
@@ -106,6 +118,12 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
 
     public static final String SHARED_PREFS_NAME = "com.android.dialer_preferences";
     private static final String PREF_LAST_T9_LOCALE = "smart_dial_prefix_last_t9_locale";
+
+    public static final String PREFERRED_SIM_ICON_INDEX = "preferred_sim_icon_index";
+    public static final String[] MULTI_SIM_NAME = {
+        "perferred_name_sub1", "perferred_name_sub2"
+    };
+
 
     /** Used to open Call Setting */
     private static final String PHONE_PACKAGE = "com.android.phone";
@@ -135,7 +153,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
 
     private static final int ACTIVITY_REQUEST_CODE_VOICE_SEARCH = 1;
 
-    private static final int FADE_ANIMATION_DURATION = 200;
+    private static final int ANIMATION_DURATION = 200;
 
     private String mFilterText;
 
@@ -172,9 +190,59 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
     private View mFragmentsSpacer;
     private View mFragmentsFrame;
 
+    private String mRegularNumber;
+
     private boolean mInDialpadSearch;
     private boolean mInRegularSearch;
     private boolean mClearSearchOnPause;
+
+    //add for CSVT
+
+    public static ICsvtService mCsvtService;
+
+    public static boolean isCsvtActive() {
+        boolean result = false;
+        if (mCsvtService != null) {
+            try{
+                result = mCsvtService.isActive();
+                if (DEBUG) Log.d(TAG, "mCsvtService.isActive = " + result);
+            } catch (RemoteException e) {
+                Log.e(TAG, Log.getStackTraceString(new Throwable()));
+            }
+        }
+        return result;
+    }
+
+    private boolean isVTSupported() {
+        return SystemProperties.getBoolean("persist.radio.csvt.enabled", false);
+        //return this.getResources().getBoolean(R.bool.csvt_enabled);
+    }
+
+
+    private void createCsvtService() {
+        if (isVTSupported()) {
+            try {
+                Intent intent = new Intent("org.codeaurora.ims.csvt.ICsvtService");
+                boolean bound = bindService(intent,
+                        mCsvtServiceConnection, Context.BIND_AUTO_CREATE);
+                if (DEBUG) Log.d(TAG, "ICsvtService bound request : " + bound);
+            } catch (NoClassDefFoundError e) {
+                Log.e(TAG, "Ignoring ICsvtService class not found exception " + e);
+            }
+        }
+    }
+
+    private static ServiceConnection mCsvtServiceConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            mCsvtService = ICsvtService.Stub.asInterface(service);
+            if (DEBUG) Log.d(TAG,"Csvt Service Connected: " + mCsvtService);
+        }
+
+        public void onServiceDisconnected(ComponentName arg0) {
+            if (DEBUG) Log.d(TAG,"Csvt Service onServiceDisconnected");
+        }
+    };
+    //add for CSVT
 
     /**
      * True if the dialpad is only temporarily showing due to being in call
@@ -220,6 +288,14 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
             new OnPhoneNumberPickerActionListener() {
                 @Override
                 public void onPickPhoneNumberAction(Uri dataUri) {
+                    if (mInDialpadSearch) {
+                        DialerStats.sendEvent(DialtactsActivity.this,
+                                DialerStats.Categories.INITIATE_CALL, "call_from_dialpad_search");
+                    } else if (mInRegularSearch) {
+                        DialerStats.sendEvent(DialtactsActivity.this,
+                                DialerStats.Categories.INITIATE_CALL, "call_from_regular_search");
+                    }
+
                     // Specify call-origin so that users will see the previous tab instead of
                     // CallLog screen (search UI will be automatically exited).
                     PhoneNumberInteraction.startInteractionForPhoneCall(
@@ -289,6 +365,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
                     if (dialpadSearch && mSmartDialSearchFragment != null) {
                             mSmartDialSearchFragment.setQueryString(newText, false);
                             mSmartDialSearchFragment.setDialpadQueryString(s.toString());
+                            mSmartDialSearchFragment.setRegularQueryString(mRegularNumber);
                     } else if (mRegularSearchFragment != null) {
                         mRegularSearchFragment.setQueryString(newText, false);
                     }
@@ -317,6 +394,8 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         fixIntent(intent);
 
         setContentView(R.layout.dialtacts_activity);
+
+        DialerStats.sendEvent(this, DialerStats.Categories.APP_LAUNCH, DialtactsActivity.class.getSimpleName());
 
         // Add the favorites fragment, and the dialpad fragment, but only if savedInstanceState
         // is null. Otherwise the fragment manager takes care of recreating these fragments.
@@ -368,6 +447,9 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
     @Override
     protected void onResume() {
         super.onResume();
+        //when already in vt call screen, click dialer should go to video call screen also.
+        Intent mIntent = new Intent("restore_video_call");
+        sendBroadcast(mIntent);
         if (mFirstLaunch) {
             displayFragment(getIntent());
         } else if (!phoneIsInUse() && mInCallDialpadUp) {
@@ -491,6 +573,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
             case R.id.overflow_menu: {
                 if (isDialpadShowing()) {
                     mDialpadOverflowMenu.show();
+                    mDialpadFragment.setupMenuItems(mDialpadOverflowMenu.getMenu());
                 } else {
                     mOverflowMenu.show();
                 }
@@ -522,6 +605,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
                 }
                 break;
             case R.id.voice_search_button:
+                DialerStats.sendEvent(DialtactsActivity.this, DialerStats.Categories.BUTTON_EVENT, "voice_clicked");
                 try {
                     startActivityForResult(new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH),
                             ACTIVITY_REQUEST_CODE_VOICE_SEARCH);
@@ -573,6 +657,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
     }
 
     private void showDialpadFragment(boolean animate) {
+        DialerStats.sendEvent(DialtactsActivity.this, DialerStats.Categories.BUTTON_EVENT, "dialer_shown");
         mDialpadFragment.setAdjustTranslationForAnimation(animate);
         final FragmentTransaction ft = getFragmentManager().beginTransaction();
         if (animate) {
@@ -618,6 +703,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         mSearchView = (EditText) findViewById(R.id.search_view);
         mSearchView.addTextChangedListener(mPhoneSearchQueryTextListener);
         mSearchView.setHint(getString(R.string.dialer_hint_find_contact));
+        setupEvent(mSearchViewContainer, R.id.search_view, DialerStats.Categories.BUTTON_EVENT, "search_clicked");
 
         prepareVoiceSearchButton();
     }
@@ -661,11 +747,11 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         mSearchAndRemoveViewContainer.setAlpha(1);
         mSearchAndRemoveViewContainer.setTranslationY(0);
         mSearchAndRemoveViewContainer.animate().withLayer().alpha(0)
-                .translationY(-height).setDuration(FADE_ANIMATION_DURATION)
+                .translationY(-height).setDuration(ANIMATION_DURATION)
                 .setListener(mHideListener);
 
         mFragmentsFrame.animate().withLayer()
-                .translationY(-height).setDuration(FADE_ANIMATION_DURATION).setListener(
+                .translationY(-height).setDuration(ANIMATION_DURATION).setListener(
                 new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animation) {
@@ -689,7 +775,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         mSearchAndRemoveViewContainer.setAlpha(0);
         mSearchAndRemoveViewContainer.setTranslationY(-height);
         mSearchAndRemoveViewContainer.animate().withLayer().alpha(1).translationY(0)
-                .setDuration(FADE_ANIMATION_DURATION).setListener(new AnimatorListenerAdapter() {
+                .setDuration(ANIMATION_DURATION).setListener(new AnimatorListenerAdapter() {
                         @Override
                         public void onAnimationStart(Animator animation) {
                             mSearchAndRemoveViewContainer.setVisibility(View.VISIBLE);
@@ -697,7 +783,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
                     });
 
         mFragmentsFrame.setTranslationY(-height);
-        mFragmentsFrame.animate().withLayer().translationY(0).setDuration(FADE_ANIMATION_DURATION)
+        mFragmentsFrame.animate().withLayer().translationY(0).setDuration(ANIMATION_DURATION)
                 .alpha(1.0f)
                 .setListener(
                         new AnimatorListenerAdapter() {
@@ -873,12 +959,14 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
             new PhoneFavoriteFragment.Listener() {
         @Override
         public void onContactSelected(Uri contactUri) {
+            DialerStats.sendEvent(DialtactsActivity.this, DialerStats.Categories.INITIATE_CALL, "call_from_favorite_tile");
             PhoneNumberInteraction.startInteractionForPhoneCall(
                         DialtactsActivity.this, contactUri, getCallOrigin());
         }
 
         @Override
         public void onCallNumberDirectly(String phoneNumber) {
+            DialerStats.sendEvent(DialtactsActivity.this, DialerStats.Categories.INITIATE_CALL, "call_from_favorite_tile");
             Intent intent = CallUtil.getCallIntent(phoneNumber, getCallOrigin());
             startActivity(intent);
         }
@@ -1016,6 +1104,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
     @Override
     public void onDialpadQueryChanged(String query) {
         final String normalizedQuery = query;
+        mRegularNumber = query;
         if (!TextUtils.equals(mSearchView.getText(), normalizedQuery)) {
             if (DEBUG) {
                 Log.d(TAG, "onDialpadQueryChanged - new query: " + query);
@@ -1052,6 +1141,51 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
         mFakeActionBar.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
+    /**
+     * @return the SIM name for the special subscription.
+     */
+    public static String getMultiSimName(Context context, int subscription) {
+        if (context == null) {
+            // If the context is null, return null.
+            return null;
+        }
+
+        String name = Settings.System.getString(context.getContentResolver(),
+                MULTI_SIM_NAME[subscription]);
+        if (TextUtils.isEmpty(name)) {
+            return context.getString(R.string.slot_name) + " " + (subscription + 1);
+        }
+        return name;
+    }
+
+    /**
+     * @return the SIM icon for the special subscription.
+     */
+    public static Drawable getMultiSimIcon(Context context, int subscription) {
+        if (context == null) {
+            // If the context is null, return 0 as no resource found.
+            return null;
+        }
+
+        TypedArray icons = context.getResources().obtainTypedArray(
+                R.array.sim_icons);
+        String simIconIndex = Settings.System.getString(context.getContentResolver(),
+                PREFERRED_SIM_ICON_INDEX);
+        if (TextUtils.isEmpty(simIconIndex)) {
+            return icons.getDrawable(subscription);
+        }
+        return getPreferredIcon(icons, simIconIndex, subscription);
+    }
+
+    public static Drawable getPreferredIcon(TypedArray icons, String iconIndex, int subscription) {
+        String[] indexs = iconIndex.split(",");
+
+        if (subscription >= indexs.length) {
+            return null;
+        }
+        return icons.getDrawable(Integer.parseInt(indexs[subscription]));
+    }
+
     private boolean phoneIsInUse() {
         final TelephonyManager tm = (TelephonyManager) getSystemService(
                 Context.TELEPHONY_SERVICE);
@@ -1059,6 +1193,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
     }
 
     public void allContactsClick(View v) {
+        DialerStats.sendEvent(DialtactsActivity.this, DialerStats.Categories.BUTTON_EVENT, "contacts_clicked");
         onShowAllContacts();
     }
 
@@ -1084,7 +1219,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
 
     @Override
     public void onDragStarted(int itemIndex, int x, int y, PhoneFavoriteTileView view) {
-        crossfadeViews(mRemoveViewContainer, mSearchViewContainer, FADE_ANIMATION_DURATION);
+        crossfadeViews(mRemoveViewContainer, mSearchViewContainer, ANIMATION_DURATION);
     }
 
     @Override
@@ -1092,7 +1227,7 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
 
     @Override
     public void onDragFinished(int x, int y) {
-        crossfadeViews(mSearchViewContainer, mRemoveViewContainer, FADE_ANIMATION_DURATION);
+        crossfadeViews(mSearchViewContainer, mRemoveViewContainer, ANIMATION_DURATION);
     }
 
     @Override
@@ -1122,11 +1257,28 @@ public class DialtactsActivity extends TransactionSafeActivity implements View.O
 
         fadeIn.setVisibility(View.VISIBLE);
         fadeIn.setAlpha(0);
-        fadeIn.animate().alpha(1).setDuration(FADE_ANIMATION_DURATION)
+        fadeIn.animate().alpha(1).setDuration(ANIMATION_DURATION)
                 .setListener(null);
     }
 
     private boolean shouldShowOnscreenDialButton() {
         return getResources().getBoolean(R.bool.config_show_onscreen_dial_button);
+    }
+
+    /**
+     * Add analytics event for view
+     * @param v
+     * @param buttonId
+     * @param category
+     * @param action
+     */
+    private void setupEvent(View v, int buttonId, final String category, final String action) {
+        final View pageviewButton = v.findViewById(buttonId);
+        pageviewButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                DialerStats.sendEvent(DialtactsActivity.this, category, action);
+            }
+        });
     }
 }

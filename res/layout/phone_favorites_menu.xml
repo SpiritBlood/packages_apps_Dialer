@@ -54,4 +54,8 @@
             android:layout_centerVertical="true"
             android:gravity="center"
         />
+<<<<<<< HEAD
 </RelativeLayout>
+=======
+</RelativeLayout>
+>>>>>>> 2e20ff144ad714578fbc12ccb9f34c2b656416bb
